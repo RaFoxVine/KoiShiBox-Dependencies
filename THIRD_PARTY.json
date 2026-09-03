@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "imported_from": {
+    "repository": "https://github.com/RaFoxVine/KoiShiBox.git",
+    "engine_commit": "9bcb1c99b3a0ffe45790b2015de48da2e287d562"
+  },
+  "components": [
+    {
+      "name": "Premake",
+      "path": "premake",
+      "version": "5.0.0-beta1",
+      "source_url": "https://github.com/premake/premake-core",
+      "upstream_revision": "v5.0.0-beta1",
+      "import_tree": "704b716499254a501457d98cee1144b8a03b5f8c",
+      "license": "BSD-3-Clause",
+      "license_file": "licenses/premake-LICENSE.txt",
+      "binary": {
+        "path": "premake/bin/premake5.exe",
+        "sha256": "6810A9D0C39D6D8361158DA6BCE9CB146267BA3405CB9EAEA98DD0DF36E991E0",
+        "size": 1398272,
+        "toolset": "upstream Windows distribution"
+      }
+    },
+    {
+      "name": "Assimp",
+      "path": "assimp",
+      "version": "legacy vc143 snapshot",
+      "source_url": "https://github.com/assimp/assimp",
+      "upstream_revision": null,
+      "import_tree": "74e508d5dfb8a5c291f55a028ec0a892efad0e71",
+      "license": "BSD-3-Clause",
+      "license_file": "licenses/assimp-LICENSE",
+      "binaries": [
+        {
+          "path": "assimp/Release/assimp-vc143-mt.dll",
+          "sha256": "253E2B63978A3AD42CC32CE7659DC078E9CCC64392DFA42E7AE3D08322922EC1",
+          "size": 5795328,
+          "toolset": "MSVC v143 x64 release"
+        },
+        {
+          "path": "assimp/Release/assimp-vc143-mt.lib",
+          "sha256": "AD6567448A21FEF8D2FEEC4075AE4742213C168137CB33A13CBF5583BE988979",
+          "size": 581664,
+          "toolset": "MSVC v143 x64 release import library"
+        }
+      ]
+    },
+    {
+      "name": "EnTT",
+      "path": "entt",
+      "version": "4.0.0",
+      "source_url": "https://github.com/skypjack/entt",
+      "upstream_revision": "v4.0.0",
+      "import_tree": "f2920031d3697a6eb51c90b842f91b6a8f0b5a5a",
+      "license": "MIT",
+      "license_file": "licenses/entt-LICENSE"
+    },
+    {
+      "name": "GLM",
+      "path": "glm",
+      "version": "1.0.3",
+      "source_url": "https://github.com/g-truc/glm",
+      "upstream_revision": "1.0.3",
+      "import_tree": "54e89c8b4d431436cbe4679ff5f2a0ebaaafb9ed",
+      "license": "MIT",
+      "license_file": "licenses/glm-copying.txt"
+    },
+    {
+      "name": "Dear ImGui",
+      "path": "imgui",
+      "version": "1.92.9b",
+      "source_url": "https://github.com/ocornut/imgui",
+      "upstream_revision": null,
+      "import_tree": "e5e0a65c14bfb90d41106f461ec14999c2270e33",
+      "license": "MIT",
+      "license_file": "imgui/LICENSE.txt"
+    },
+    {
+      "name": "ImGuizmo",
+      "path": "ImGuizmo",
+      "version": "legacy pinned snapshot",
+      "source_url": "https://github.com/CedricGuillemet/ImGuizmo.git",
+      "upstream_revision": "18cef5e031d8c6973d80284c67f60549fafd78c1",
+      "import_tree": "18cef5e031d8c6973d80284c67f60549fafd78c1",
+      "license": "MIT",
+      "license_file": "ImGuizmo/LICENSE"
+    },
+    {
+      "name": "NVRHI",
+      "path": "nvrhi",
+      "version": "API header 26 snapshot",
+      "source_url": "https://github.com/NVIDIA-RTX/NVRHI.git",
+      "upstream_revision": "8e8c36e37558acec333204619b95d9d2fcdc4a79",
+      "import_tree": "fab8e8269bae91e16f82ca796180aa35ecf74493",
+      "modifications": [
+        "KoiShiBox-owned NVRHIDispatcherStorage.cpp was intentionally excluded"
+      ],
+      "license": "MIT",
+      "license_file": "nvrhi/LICENSE.txt"
+    },
+    {
+      "name": "stb_image",
+      "path": "stb_image",
+      "version": "legacy single-header snapshot",
+      "source_url": "https://github.com/nothings/stb",
+      "upstream_revision": null,
+      "import_tree": "339cfdfb4a67d964894e3d11b659a52eb5aac831",
+      "license": "MIT OR Unlicense",
+      "license_file": "licenses/stb-LICENSE"
+    },
+    {
+      "name": "yaml-cpp",
+      "path": "yaml-cpp",
+      "version": "0.6.3",
+      "source_url": "https://github.com/jbeder/yaml-cpp",
+      "upstream_revision": "yaml-cpp-0.6.3",
+      "import_tree": "7418b76d41b92fc019d531913d87f4e5a91de503",
+      "license": "MIT",
+      "license_file": "yaml-cpp/LICENSE"
+    },
+    {
+      "name": "ShaderMake",
+      "path": "tools/ShaderMake",
+      "version": "Donut matching snapshot",
+      "source_url": "https://github.com/NVIDIA-RTX/ShaderMake",
+      "upstream_revision": null,
+      "import_tree": "b8dc1316a5271a80b15562cabfd590f6a3759358",
+      "license": "MIT",
+      "license_file": "references/donut/donut/LICENSE.txt"
+    },
+    {
+      "name": "Donut reference",
+      "path": "references/donut",
+      "version": "flattened legacy research snapshot",
+      "source_url": "https://github.com/NVIDIA-RTX/Donut-Samples.git",
+      "upstream_revision": null,
+      "import_trees": {
+        "donut_include": "32d69fbc5f268fbcb5680f303071e58f96e10703",
+        "donut_src": "21f622e850a401f516e50c9fde9f5cdeacd38a07",
+        "donut_shaders": "14fcd4da432b42c1538196d133daf586087d4101",
+        "matching_nvrhi": "65cc015fc06e4fb04655ae0ff5ab33b6b9f02063",
+        "feature_demo": "5e02b9c85a81f19e80245e127281bc326a89265e"
+      },
+      "modifications": [
+        "media, build logs, generated binaries, thirdparty, tests, docs, and unrelated examples excluded",
+        "matching NVRHI flattened into references/donut/nvrhi"
+      ],
+      "license": "MIT",
+      "license_file": "references/donut/donut/LICENSE.txt"
+    },
+    {
+      "name": "GLFW",
+      "path": ".deps/vcpkg_installed",
+      "version": "resolved by pinned vcpkg baseline",
+      "source_url": "https://github.com/glfw/glfw",
+      "upstream_revision": "3.4 via vcpkg",
+      "import_tree": null,
+      "license": "Zlib",
+      "license_file": "licenses/glfw-LICENSE.md",
+      "acquisition": "machine-local vcpkg installs into the engine clone; not stored in this repository"
+    }
+  ]
+}

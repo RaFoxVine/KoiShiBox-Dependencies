@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "inputs": [
+    {
+      "id": "donut-gltf-sample-assets",
+      "required": false,
+      "source": {
+        "type": "git",
+        "url": "https://github.com/KhronosGroup/glTF-Sample-Assets.git",
+        "revision": "d1ba92fc422b42a2b8ed7c2476626fb0bd752d14"
+      },
+      "destination": ".deps/references/donut-media/glTF-Sample-Assets",
+      "ready_effect": "none",
+      "description": "Large Donut research media. Acquire only when a human explicitly asks for it."
+    }
+  ]
+}

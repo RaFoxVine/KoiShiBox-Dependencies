@@ -1,0 +1,10 @@
+/.vs/
+/bin/
+/bin-int/
+/build/
+/buildtrees/
+/downloads/
+/packages/
+/vcpkg_installed/
+*.tar
+*.zip
