@@ -6,7 +6,7 @@ fresh engine clone without borrowing files from another checkout.
 
 ## Contract
 
-- The engine pins this repository as its root `vendor` submodule.
+- The engine pins this repository as its root `KoiShiBox-Dependencies/` submodule.
 - This repository contains no nested Git submodules.
 - Vulkan SDK and the vcpkg executable remain machine-local.
 - vcpkg installs GLFW into the engine clone's ignored `.deps/vcpkg_installed` tree.
