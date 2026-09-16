@@ -22,6 +22,8 @@
 
 #include "vulkan-backend.h"
 #include <nvrhi/common/misc.h>
+#include <algorithm>
+#include <exception>
 #include <sstream>
 
 namespace nvrhi::vulkan
@@ -295,37 +297,444 @@ namespace nvrhi::vulkan
             return Texture::TextureSubresourceViewType::AllAspects;
     }
 
+    bool DescriptorPoolClassKey::operator==(const DescriptorPoolClassKey& other) const
+    {
+        if (flags != other.flags || variableDescriptorCount != other.variableDescriptorCount || poolSizes.size() != other.poolSizes.size())
+        {
+            return false;
+        }
+        for (size_t i = 0; i < poolSizes.size(); ++i)
+        {
+            if (poolSizes[i].type != other.poolSizes[i].type || poolSizes[i].descriptorCount != other.poolSizes[i].descriptorCount)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    DescriptorPoolPage::DescriptorPoolPage(const DescriptorPoolClassKey& key, uint32_t capacity,
+        std::shared_ptr<DescriptorPoolLeaseCounters> leaseCounters)
+        : key(key)
+        , capacity(capacity)
+        , m_LeaseCounters(std::move(leaseCounters))
+    {
+    }
+
+    DescriptorPoolPage::~DescriptorPoolPage()
+    {
+        // Pools are destroyed only by DescriptorPoolAllocator maintenance or
+        // shutdown. A page destructor must remain safe after allocator death.
+        assert(!pool);
+    }
+
+    void DescriptorPoolPage::acquireLease()
+    {
+        liveSetLeaseCount.fetch_add(1, std::memory_order_relaxed);
+        const uint64_t live = m_LeaseCounters->liveSetLeases.fetch_add(1, std::memory_order_relaxed) + 1;
+        uint64_t peak = m_LeaseCounters->peakLiveSetLeases.load(std::memory_order_relaxed);
+        while (peak < live && !m_LeaseCounters->peakLiveSetLeases.compare_exchange_weak(
+            peak, live, std::memory_order_relaxed, std::memory_order_relaxed))
+        {
+        }
+    }
+
+    void DescriptorPoolPage::releaseLease()
+    {
+        uint32_t previousPageLeaseCount = liveSetLeaseCount.load(std::memory_order_acquire);
+        while (previousPageLeaseCount != 0 && !liveSetLeaseCount.compare_exchange_weak(
+            previousPageLeaseCount, previousPageLeaseCount - 1, std::memory_order_acq_rel, std::memory_order_acquire))
+        {
+        }
+        assert(previousPageLeaseCount != 0);
+        if (previousPageLeaseCount == 0)
+        {
+            return;
+        }
+
+        const uint64_t previousGlobalLeaseCount = m_LeaseCounters->liveSetLeases.fetch_sub(1, std::memory_order_acq_rel);
+        assert(previousGlobalLeaseCount != 0);
+        maintenancePending.store(true, std::memory_order_release);
+    }
+
+    DescriptorPoolAllocator::DescriptorPoolAllocator(const VulkanContext& context, const DescriptorPoolConfig& config)
+        : m_Context(context), m_Config(config)
+    { }
+
+    DescriptorPoolAllocator::~DescriptorPoolAllocator()
+    {
+        if (!shutdown())
+        {
+            std::terminate();
+        }
+    }
+
+    void DescriptorPoolAllocator::destroyPage(DescriptorPoolPage& page)
+    {
+        assert(page.liveSetLeaseCount.load(std::memory_order_acquire) == 0);
+        if (!page.pool)
+        {
+            return;
+        }
+
+        m_Context.device.destroyDescriptorPool(page.pool, m_Context.allocationCallbacks);
+        page.pool = vk::DescriptorPool();
+        m_PoolPagesDestroyed.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    std::shared_ptr<DescriptorPoolPage> DescriptorPoolAllocator::createPage(const DescriptorPoolClassKey& key, uint32_t capacity)
+    {
+        std::vector<vk::DescriptorPoolSize> scaled;
+        scaled.reserve(key.poolSizes.size());
+        for (const auto& size : key.poolSizes)
+        {
+            const uint64_t count = uint64_t(size.descriptorCount) * capacity;
+            if (count > UINT32_MAX)
+            {
+                ++m_AllocationFailures;
+                if (m_Context.messageCallback)
+                {
+                    m_Context.error("NVRHI_DESCRIPTOR_POOL descriptor budget overflow result=overflow");
+                }
+                return nullptr;
+            }
+            scaled.push_back(vk::DescriptorPoolSize().setType(size.type).setDescriptorCount(uint32_t(count)));
+        }
+        auto page = std::make_shared<DescriptorPoolPage>(key, capacity, m_LeaseCounters);
+        const auto info = vk::DescriptorPoolCreateInfo().setFlags(key.flags).setPoolSizeCount(uint32_t(scaled.size())).setPPoolSizes(scaled.data()).setMaxSets(capacity);
+        const vk::Result result = m_Context.device.createDescriptorPool(&info, m_Context.allocationCallbacks, &page->pool);
+        if (result != vk::Result::eSuccess)
+        {
+            ++m_AllocationFailures;
+            if (m_Context.messageCallback)
+            {
+                m_Context.error("NVRHI_DESCRIPTOR_POOL create failed result=" + std::to_string(static_cast<int>(result)));
+            }
+            return nullptr;
+        }
+        ++m_PoolPagesCreated;
+        return page;
+    }
+
+    bool DescriptorPoolAllocator::resetPage(const std::shared_ptr<DescriptorPoolPage>& page)
+    {
+        if (page->liveSetLeaseCount.load(std::memory_order_acquire) != 0 || page->retired)
+        {
+            return false;
+        }
+        const VkResult resetResult = vkResetDescriptorPool(
+            static_cast<VkDevice>(m_Context.device),
+            static_cast<VkDescriptorPool>(page->pool),
+            0);
+        if (resetResult != VK_SUCCESS)
+        {
+            page->retired = true;
+            ++m_AllocationFailures;
+            if (m_Context.messageCallback)
+            {
+                m_Context.error("NVRHI_DESCRIPTOR_POOL reset failed; retiring page result=" + std::to_string(static_cast<int>(resetResult)));
+            }
+            return false;
+        }
+        page->allocatedSetCount = 0;
+        page->exhausted = false;
+        page->maintenancePending.store(false, std::memory_order_release);
+        page->lastEmptyUse = ++m_EmptyUseCounter;
+        ++m_PoolResets;
+        return true;
+    }
+
+    void DescriptorPoolAllocator::pruneWarmPagesLocked()
+    {
+        for (auto it = m_Pages.begin(); it != m_Pages.end(); )
+        {
+            if ((*it)->liveSetLeaseCount.load(std::memory_order_acquire) == 0 && ((*it)->retired || (*it)->exhausted))
+            {
+                destroyPage(**it);
+                it = m_Pages.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        // Keep the most-recent empty page for each allocation signature.
+        for (auto candidate = m_Pages.begin(); candidate != m_Pages.end(); )
+        {
+            if ((*candidate)->liveSetLeaseCount.load(std::memory_order_acquire) != 0 || (*candidate)->allocatedSetCount != 0)
+            {
+                ++candidate;
+                continue;
+            }
+            bool erasedCandidate = false;
+            for (auto other = std::next(candidate); other != m_Pages.end(); )
+            {
+                if ((*other)->liveSetLeaseCount.load(std::memory_order_acquire) == 0 && (*other)->allocatedSetCount == 0 && (*other)->key == (*candidate)->key)
+                {
+                    if ((*other)->lastEmptyUse < (*candidate)->lastEmptyUse)
+                    {
+                        destroyPage(**other);
+                        other = m_Pages.erase(other);
+                        continue;
+                    }
+                    destroyPage(**candidate);
+                    candidate = m_Pages.erase(candidate);
+                    erasedCandidate = true;
+                    break;
+                }
+                ++other;
+            }
+            if (!erasedCandidate)
+            {
+                ++candidate;
+            }
+        }
+        uint32_t emptyWarmPages = 0;
+        for (const auto& page : m_Pages)
+        {
+            emptyWarmPages += page->liveSetLeaseCount.load(std::memory_order_acquire) == 0 && page->allocatedSetCount == 0 ? 1u : 0u;
+        }
+        while (emptyWarmPages > m_Config.maxWarmPages)
+        {
+            auto victim = m_Pages.end();
+            for (auto it = m_Pages.begin(); it != m_Pages.end(); ++it)
+            {
+                if ((*it)->liveSetLeaseCount.load(std::memory_order_acquire) == 0 && (*it)->allocatedSetCount == 0 && (victim == m_Pages.end() || (*it)->lastEmptyUse < (*victim)->lastEmptyUse))
+                {
+                    victim = it;
+                }
+            }
+            if (victim == m_Pages.end())
+            {
+                break;
+            }
+            destroyPage(**victim);
+            m_Pages.erase(victim);
+            --emptyWarmPages;
+        }
+    }
+
+    DescriptorSetAllocation DescriptorPoolAllocator::allocate(BindingLayout& layout)
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        ++m_BindingSetCreateRequests;
+        if (m_ShuttingDown)
+        {
+            ++m_AllocationFailures;
+            return {};
+        }
+        if (m_Config.setsPerPage == 0)
+        {
+            ++m_AllocationFailures;
+            if (m_Context.messageCallback) m_Context.error("NVRHI_DESCRIPTOR_POOL shared setsPerPage must be non-zero result=invalid-config");
+            return {};
+        }
+
+        DescriptorPoolClassKey key;
+        key.flags = {};
+        key.variableDescriptorCount = 0;
+        key.poolSizes = layout.descriptorPoolSizeInfo;
+        std::sort(key.poolSizes.begin(), key.poolSizes.end(), [](const auto& left, const auto& right) { return left.type < right.type; });
+        std::vector<vk::DescriptorPoolSize> canonicalSizes;
+        for (const auto& size : key.poolSizes)
+        {
+            if (!canonicalSizes.empty() && canonicalSizes.back().type == size.type)
+            {
+                const uint64_t merged = uint64_t(canonicalSizes.back().descriptorCount) + size.descriptorCount;
+                if (merged > UINT32_MAX)
+                {
+                    ++m_AllocationFailures;
+                    if (m_Context.messageCallback)
+                    {
+                        m_Context.error("NVRHI_DESCRIPTOR_POOL descriptor signature overflow result=overflow");
+                    }
+                    return {};
+                }
+                canonicalSizes.back().descriptorCount = uint32_t(merged);
+            }
+            else
+            {
+                canonicalSizes.push_back(size);
+            }
+        }
+        key.poolSizes = std::move(canonicalSizes);
+        const uint32_t capacity = m_Config.setsPerPage;
+        std::shared_ptr<DescriptorPoolPage> page;
+        bool pageIsPublished = false;
+        for (const auto& candidate : m_Pages)
+        {
+            if (!candidate->retired && !candidate->exhausted
+                && candidate->key == key
+                && candidate->allocatedSetCount < candidate->capacity)
+            {
+                page = candidate;
+                pageIsPublished = true;
+                break;
+            }
+        }
+
+        if (!page)
+        {
+            page = createPage(key, capacity);
+            if (!page)
+            {
+                return {};
+            }
+        }
+
+        const vk::DescriptorSetLayout setLayout = layout.descriptorSetLayout;
+        auto allocateFromPage = [&](const std::shared_ptr<DescriptorPoolPage>& candidate, vk::DescriptorSet& result)
+        {
+            const auto info = vk::DescriptorSetAllocateInfo().setDescriptorPool(candidate->pool).setDescriptorSetCount(1).setPSetLayouts(&setLayout);
+            return m_Context.device.allocateDescriptorSets(&info, &result);
+        };
+        vk::DescriptorSet set;
+        vk::Result result = allocateFromPage(page, set);
+        if (result == vk::Result::eErrorOutOfPoolMemory || result == vk::Result::eErrorFragmentedPool)
+        {
+            page->exhausted = true;
+            if (!pageIsPublished)
+            {
+                destroyPage(*page);
+            }
+            page = createPage(key, capacity);
+            pageIsPublished = false;
+            if (!page)
+            {
+                return {};
+            }
+            result = allocateFromPage(page, set); // one fresh-page retry only
+        }
+        if (result != vk::Result::eSuccess)
+        {
+            // A fresh page has not been published yet. Its native pool owns the
+            // allocated descriptor-set slot, so reclaim it before returning.
+            if (!pageIsPublished)
+            {
+                destroyPage(*page);
+            }
+            ++m_AllocationFailures;
+            if (m_Context.messageCallback)
+            {
+                m_Context.error("NVRHI_DESCRIPTOR_POOL allocate failed result=" + std::to_string(static_cast<int>(result)));
+            }
+            return {};
+        }
+        if (std::find_if(m_Pages.begin(), m_Pages.end(), [&page](const auto& candidate) { return candidate.get() == page.get(); }) == m_Pages.end())
+        {
+            try
+            {
+                m_Pages.push_back(page);
+            }
+            catch (const std::bad_alloc&)
+            {
+                destroyPage(*page);
+                ++m_AllocationFailures;
+                if (m_Context.messageCallback)
+                {
+                    m_Context.error("NVRHI_DESCRIPTOR_POOL publish failed result=host-allocation");
+                }
+                return {};
+            }
+        }
+
+        ++page->allocatedSetCount;
+        page->acquireLease();
+        ++m_DescriptorSetAllocations;
+        return { set, std::move(page) };
+    }
+
+    void DescriptorPoolAllocator::runMaintenance()
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        for (auto it = m_Pages.begin(); it != m_Pages.end(); )
+        {
+            const std::shared_ptr<DescriptorPoolPage>& page = *it;
+            if (page->liveSetLeaseCount.load(std::memory_order_acquire) != 0)
+            {
+                ++it;
+                continue;
+            }
+
+            assert(page->liveSetLeaseCount.load(std::memory_order_acquire) == 0);
+            if (page->retired || page->exhausted)
+            {
+                destroyPage(*page);
+                it = m_Pages.erase(it);
+                continue;
+            }
+
+            if (page->allocatedSetCount != 0 && !resetPage(page))
+            {
+                assert(page->retired);
+                destroyPage(*page);
+                it = m_Pages.erase(it);
+                continue;
+            }
+
+            ++it;
+        }
+
+        pruneWarmPagesLocked();
+    }
+
+    bool DescriptorPoolAllocator::shutdown()
+    {
+        std::lock_guard<std::mutex> lock(m_Mutex);
+        if (m_ShuttingDown)
+        {
+            return true;
+        }
+        m_ShuttingDown = true;
+        const uint64_t liveSetLeases = m_LeaseCounters->liveSetLeases.load(std::memory_order_acquire);
+        if (liveSetLeases != 0)
+        {
+            if (m_Context.messageCallback)
+            {
+                m_Context.error("NVRHI_DESCRIPTOR_POOL shutdown with live BindingSet leases live=" + std::to_string(liveSetLeases));
+            }
+            return false;
+        }
+        for (const std::shared_ptr<DescriptorPoolPage>& page : m_Pages)
+        {
+            assert(page->liveSetLeaseCount.load(std::memory_order_acquire) == 0);
+            destroyPage(*page);
+        }
+        m_Pages.clear();
+        if (m_Context.messageCallback)
+        {
+            m_Context.info(std::string("NVRHI_DESCRIPTOR_POOL contract=shared-pages-v1")
+                + " bindingSetCreateRequests=" + std::to_string(m_BindingSetCreateRequests)
+                + " descriptorSetAllocations=" + std::to_string(m_DescriptorSetAllocations)
+                + " poolPagesCreated=" + std::to_string(m_PoolPagesCreated)
+                + " poolResets=" + std::to_string(m_PoolResets)
+                + " poolPagesDestroyed=" + std::to_string(m_PoolPagesDestroyed.load(std::memory_order_relaxed))
+                + " liveSetLeases=" + std::to_string(liveSetLeases)
+                + " peakLiveSetLeases=" + std::to_string(m_LeaseCounters->peakLiveSetLeases.load(std::memory_order_acquire))
+                + " allocationFailures=" + std::to_string(m_AllocationFailures)
+                + " setsPerPage=" + std::to_string(m_Config.setsPerPage)
+                + " maxWarmPages=" + std::to_string(m_Config.maxWarmPages));
+        }
+        return true;
+    }
+
     BindingSetHandle Device::createBindingSet(const BindingSetDesc& desc, IBindingLayout* _layout)
     {
         BindingLayout* layout = checked_cast<BindingLayout*>(_layout);
 
-        BindingSet *ret = new BindingSet(m_Context);
+        std::unique_ptr<BindingSet> ret = std::make_unique<BindingSet>(m_Context);
         ret->desc = desc;
         ret->layout = layout;
 
-        const auto& descriptorSetLayout = layout->descriptorSetLayout;
-        const auto& poolSizes = layout->descriptorPoolSizeInfo;
-
-        // create descriptor pool to allocate a descriptor from
-        auto poolInfo = vk::DescriptorPoolCreateInfo()
-            .setPoolSizeCount(uint32_t(poolSizes.size()))
-            .setPPoolSizes(poolSizes.data())
-            .setMaxSets(1);
-
-        vk::Result res = m_Context.device.createDescriptorPool(&poolInfo,
-                                                             m_Context.allocationCallbacks,
-                                                             &ret->descriptorPool);
-        CHECK_VK_FAIL(res)
-        
-        // create the descriptor set
-        auto descriptorSetAllocInfo = vk::DescriptorSetAllocateInfo()
-            .setDescriptorPool(ret->descriptorPool)
-            .setDescriptorSetCount(1)
-            .setPSetLayouts(&descriptorSetLayout);
-
-        res = m_Context.device.allocateDescriptorSets(&descriptorSetAllocInfo,
-            &ret->descriptorSet);
-        CHECK_VK_FAIL(res)
+        const DescriptorSetAllocation allocation = m_DescriptorPoolAllocator->allocate(*layout);
+        if (!allocation.pageLease || !allocation.descriptorSet)
+        {
+            return nullptr;
+        }
+        ret->descriptorSet = allocation.descriptorSet;
+        ret->descriptorPoolPage = allocation.pageLease;
+        vk::Result res = vk::Result::eSuccess;
         
         // collect all of the descriptor write data
         std::vector<vk::DescriptorImageInfo> descriptorImageInfo;
@@ -624,17 +1033,17 @@ namespace nvrhi::vulkan
 
         m_Context.device.updateDescriptorSets(uint32_t(descriptorWriteInfo.size()), descriptorWriteInfo.data(), 0, nullptr);
 
-        return BindingSetHandle::Create(ret);
+        return BindingSetHandle::Create(ret.release());
     }
 
     BindingSet::~BindingSet()
     {
-        if (descriptorPool)
+        if (descriptorPoolPage)
         {
-            m_Context.device.destroyDescriptorPool(descriptorPool, m_Context.allocationCallbacks);
-            descriptorPool = vk::DescriptorPool();
-            descriptorSet = vk::DescriptorSet();
+            descriptorPoolPage->releaseLease();
         }
+        descriptorPoolPage.reset();
+        descriptorSet = vk::DescriptorSet();
     }
 
     Object BindingSet::getNativeObject(ObjectType objectType)
@@ -642,7 +1051,7 @@ namespace nvrhi::vulkan
         switch (objectType)
         {
         case ObjectTypes::VK_DescriptorPool:
-            return Object(descriptorPool);
+            return descriptorPoolPage ? Object(descriptorPoolPage->pool) : nullptr;
         case ObjectTypes::VK_DescriptorSet:
             return Object(descriptorSet);
         default:

@@ -29,6 +29,10 @@
 #include "../common/versioning.h"
 #include <mutex>
 #include <list>
+#include <atomic>
+#include <cassert>
+#include <memory>
+#include <vector>
 
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #include <vulkan/vulkan.hpp>
@@ -65,6 +69,84 @@ namespace nvrhi::vulkan
     class TimerQuery;
     class Marker;
     class Device;
+    class BindingLayout;
+    struct VulkanContext;
+    class DescriptorPoolAllocator;
+
+    struct DescriptorPoolClassKey
+    {
+        std::vector<vk::DescriptorPoolSize> poolSizes;
+        vk::DescriptorPoolCreateFlags flags;
+        uint32_t variableDescriptorCount = 0;
+
+        bool operator==(const DescriptorPoolClassKey& other) const;
+    };
+
+    struct DescriptorPoolLeaseCounters
+    {
+        std::atomic<uint64_t> liveSetLeases{ 0 };
+        std::atomic<uint64_t> peakLiveSetLeases{ 0 };
+    };
+
+    class DescriptorPoolPage
+    {
+    public:
+        vk::DescriptorPool pool;
+        DescriptorPoolClassKey key;
+        uint32_t capacity = 0;
+        uint32_t allocatedSetCount = 0;
+        std::atomic<uint32_t> liveSetLeaseCount{ 0 };
+        std::atomic<bool> maintenancePending{ false };
+        uint64_t lastEmptyUse = 0;
+        bool exhausted = false;
+        bool retired = false;
+
+        DescriptorPoolPage(const DescriptorPoolClassKey& key, uint32_t capacity,
+            std::shared_ptr<DescriptorPoolLeaseCounters> leaseCounters);
+        ~DescriptorPoolPage();
+        void acquireLease();
+        void releaseLease();
+
+    private:
+        std::shared_ptr<DescriptorPoolLeaseCounters> m_LeaseCounters;
+    };
+
+    struct DescriptorSetAllocation
+    {
+        vk::DescriptorSet descriptorSet;
+        std::shared_ptr<DescriptorPoolPage> pageLease;
+    };
+
+    class DescriptorPoolAllocator
+    {
+    public:
+        DescriptorPoolAllocator(const VulkanContext& context, const DescriptorPoolConfig& config);
+        ~DescriptorPoolAllocator();
+
+        DescriptorSetAllocation allocate(BindingLayout& layout);
+        void runMaintenance();
+        bool shutdown();
+
+    private:
+        void destroyPage(DescriptorPoolPage& page);
+        std::shared_ptr<DescriptorPoolPage> createPage(const DescriptorPoolClassKey& key, uint32_t capacity);
+        bool resetPage(const std::shared_ptr<DescriptorPoolPage>& page);
+        void pruneWarmPagesLocked();
+
+        const VulkanContext& m_Context;
+        DescriptorPoolConfig m_Config;
+        std::mutex m_Mutex;
+        uint64_t m_EmptyUseCounter = 0;
+        uint64_t m_BindingSetCreateRequests = 0;
+        uint64_t m_DescriptorSetAllocations = 0;
+        uint64_t m_PoolPagesCreated = 0;
+        uint64_t m_PoolResets = 0;
+        std::atomic<uint64_t> m_PoolPagesDestroyed{ 0 };
+        uint64_t m_AllocationFailures = 0;
+        std::shared_ptr<DescriptorPoolLeaseCounters> m_LeaseCounters = std::make_shared<DescriptorPoolLeaseCounters>();
+        std::vector<std::shared_ptr<DescriptorPoolPage>> m_Pages;
+        bool m_ShuttingDown = false;
+    };
 
     struct ResourceStateMapping
     {
@@ -770,8 +852,8 @@ namespace nvrhi::vulkan
         BindingSetDesc desc;
         BindingLayoutHandle layout;
 
-        // TODO: move pool to the context instead
-        vk::DescriptorPool descriptorPool;
+        // A strong page lease prevents reset/destroy while this wrapper is live.
+        std::shared_ptr<DescriptorPoolPage> descriptorPoolPage;
         vk::DescriptorSet descriptorSet;
 
         std::vector<ResourceHandle> resources;
@@ -1201,6 +1283,7 @@ namespace nvrhi::vulkan
 
         VulkanContext m_Context;
         VulkanAllocator m_Allocator;
+        std::unique_ptr<DescriptorPoolAllocator> m_DescriptorPoolAllocator;
         
         vk::QueryPool m_TimerQueryPool = nullptr;
         utils::BitSetAllocator m_TimerQueryAllocator;

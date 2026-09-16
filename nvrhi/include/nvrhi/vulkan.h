@@ -35,6 +35,14 @@ namespace nvrhi
 
 namespace nvrhi::vulkan
 {
+    // Ordinary BindingSets always use shared descriptor-pool pages. Descriptor
+    // tables retain their separate variable-sized upstream allocation path.
+    struct DescriptorPoolConfig
+    {
+        uint32_t setsPerPage = 64;
+        uint32_t maxWarmPages = 16;
+    };
+
     class IDevice : public nvrhi::IDevice
     {
     public:
@@ -77,6 +85,8 @@ namespace nvrhi::vulkan
         bool bufferDeviceAddressSupported = false;
         bool aftermathEnabled = false;
         bool logBufferLifetime = false;
+
+        DescriptorPoolConfig descriptorPoolConfig;
 
         std::string vulkanLibraryName; // if empty, use default
     };

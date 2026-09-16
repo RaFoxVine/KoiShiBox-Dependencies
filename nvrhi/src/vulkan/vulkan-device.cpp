@@ -23,6 +23,7 @@
 #include "vulkan-backend.h"
 #include <unordered_map>
 #include <sstream>
+#include <exception>
 
 #include <nvrhi/common/misc.h>
 
@@ -53,6 +54,7 @@ namespace nvrhi::vulkan
     Device::Device(const DeviceDesc& desc)
         : m_Context(desc.instance, desc.physicalDevice, desc.device, reinterpret_cast<vk::AllocationCallbacks*>(desc.allocationCallbacks))
         , m_Allocator(m_Context)
+        , m_DescriptorPoolAllocator(std::make_unique<DescriptorPoolAllocator>(m_Context, desc.descriptorPoolConfig))
         , m_TimerQueryAllocator(desc.maxTimerQueries, true)
     {
         if (desc.graphicsQueue)
@@ -270,6 +272,26 @@ namespace nvrhi::vulkan
 
     Device::~Device()
     {
+        // Queues can own recorded command-list references, and those can keep
+        // BindingSets alive. Drop queues while both the Vulkan context and pool
+        // allocator still exist, then make any remaining external lease fatal.
+        for (auto& queue : m_Queues)
+        {
+            queue.reset();
+        }
+
+        // BindingSet handles must be released before the NVRHI device. An external
+        // live lease would prevent safely reclaiming its native pool before the
+        // device and Vulkan context are destroyed.
+        if (m_DescriptorPoolAllocator)
+        {
+            if (!m_DescriptorPoolAllocator->shutdown())
+            {
+                std::terminate();
+            }
+            m_DescriptorPoolAllocator.reset();
+        }
+
         if (m_TimerQueryPool)
         {
             m_Context.device.destroyQueryPool(m_TimerQueryPool);
@@ -340,6 +362,10 @@ namespace nvrhi::vulkan
             {
                 m_Queue->runGarbageCollection();
             }
+        }
+        if (m_DescriptorPoolAllocator)
+        {
+            m_DescriptorPoolAllocator->runMaintenance();
         }
     }
 

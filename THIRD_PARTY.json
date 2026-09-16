@@ -93,7 +93,8 @@
       "upstream_revision": "8e8c36e37558acec333204619b95d9d2fcdc4a79",
       "import_tree": "fab8e8269bae91e16f82ca796180aa35ecf74493",
       "modifications": [
-        "KoiShiBox-owned NVRHIDispatcherStorage.cpp was intentionally excluded"
+        "KoiShiBox-owned NVRHIDispatcherStorage.cpp was intentionally excluded",
+        "Vulkan BindingSets use KoiShiBox shared descriptor-pool pages with lease-safe reset, bounded warm-page retention, and teardown diagnostics"
       ],
       "license": "MIT",
       "license_file": "nvrhi/LICENSE.txt"
