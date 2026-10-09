@@ -1,2 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+glfw/** -text whitespace=cr-at-eol
+tools/DXC/** -text whitespace=cr-at-eol

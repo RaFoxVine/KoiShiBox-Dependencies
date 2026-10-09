@@ -151,14 +151,100 @@
     },
     {
       "name": "GLFW",
-      "path": ".deps/vcpkg_installed",
-      "version": "resolved by pinned vcpkg baseline",
+      "path": "glfw",
+      "version": "3.4",
       "source_url": "https://github.com/glfw/glfw",
-      "upstream_revision": "3.4 via vcpkg",
-      "import_tree": null,
+      "upstream_revision": "3.4",
+      "import_tree": "abd624bc05b8f0f292cff211aea55f007c13f8ed",
       "license": "Zlib",
-      "license_file": "licenses/glfw-LICENSE.md",
-      "acquisition": "machine-local vcpkg installs into the engine clone; not stored in this repository"
+      "license_file": "glfw/LICENSE.md",
+      "archive_url": "https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.bin.WIN64.zip",
+      "archive_sha256": "54efa829400f2a0537f742b2b3bdd74e437bb4f2f048e4b7d3c5557d11a611e6",
+      "archive_size": 3284918,
+      "files": [
+        {
+          "path": "glfw/include/GLFW/glfw3.h",
+          "source": "glfw-3.4.bin.WIN64/include/GLFW/glfw3.h",
+          "size": 241826,
+          "sha256": "aa370985f6b493bbe0358a36ab49f5780a6397c0209c6d98a62143dea595b73c"
+        },
+        {
+          "path": "glfw/include/GLFW/glfw3native.h",
+          "source": "glfw-3.4.bin.WIN64/include/GLFW/glfw3native.h",
+          "size": 21201,
+          "sha256": "40035881fdc02a9ab265c2086338f749a0411e1c15b68fada678fa34e8bd8958"
+        },
+        {
+          "path": "glfw/windows-x64/glfw3.dll",
+          "source": "glfw-3.4.bin.WIN64/lib-vc2022/glfw3.dll",
+          "size": 232448,
+          "sha256": "4429adff46d4d1038bb5836cecc59661eef7126e4941de6fdfde8855e7c14bb1"
+        },
+        {
+          "path": "glfw/windows-x64/glfw3dll.lib",
+          "source": "glfw-3.4.bin.WIN64/lib-vc2022/glfw3dll.lib",
+          "size": 31378,
+          "sha256": "3b1e0f2e4e9f443838a0917b7c58aedc4af2c25823a811254a75c5b1ad62e0d3"
+        },
+        {
+          "path": "glfw/LICENSE.md",
+          "source": "glfw-3.4.bin.WIN64/LICENSE.md",
+          "size": 904,
+          "sha256": "149704059b5d0bf551637e50042dd4de9c2cae921021f6636298911e3a5f9462"
+        }
+      ],
+      "archive_hash_source": "computed from fixed official release; no upstream digest was published",
+      "acquisition": "official Windows x64 vc2022 dynamic SDK; unchanged upstream bytes"
+    },
+    {
+      "name": "DXC",
+      "path": "tools/DXC",
+      "version": "v1.9.2602",
+      "source_url": "https://github.com/microsoft/DirectXShaderCompiler",
+      "upstream_revision": "v1.9.2602",
+      "import_tree": "4eaadf736b767afa31c72aae1ab2561327d9d021",
+      "license": "upstream LICENSE-MS.txt and LICENSE-LLVM.txt",
+      "license_files": [
+        "tools/DXC/LICENSE-MS.txt",
+        "tools/DXC/LICENSE-LLVM.txt"
+      ],
+      "archive_url": "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2602/dxc_2026_02_20.zip",
+      "archive_sha256": "a1e89031421cf3c1fca6627766ab3020ca4f962ac7e2caa7fab2b33a8436151e",
+      "archive_size": 27061312,
+      "files": [
+        {
+          "path": "tools/DXC/windows-x64/dxc.exe",
+          "source": "bin/x64/dxc.exe",
+          "size": 1126984,
+          "sha256": "b9cff94181248e080804b385da8964b6319fd07760721baa9053a891cf7a727f"
+        },
+        {
+          "path": "tools/DXC/windows-x64/dxcompiler.dll",
+          "source": "bin/x64/dxcompiler.dll",
+          "size": 17951808,
+          "sha256": "b86a738ece4c05dbe2d9bbb29668a2ccb28a0740773c9b027cdc61e8d07b4d75"
+        },
+        {
+          "path": "tools/DXC/windows-x64/dxil.dll",
+          "source": "bin/x64/dxil.dll",
+          "size": 1503304,
+          "sha256": "058f2f52a680c38b223a5615b7df969def21f77e577562e5099d971dede992de"
+        },
+        {
+          "path": "tools/DXC/LICENSE-LLVM.txt",
+          "source": "LICENSE-LLVM.txt",
+          "size": 1979,
+          "sha256": "729615317e28dd03907e46f0fc3b5e88f7853cee61d1a1471d2749335516b46f"
+        },
+        {
+          "path": "tools/DXC/LICENSE-MS.txt",
+          "source": "LICENSE-MS.txt",
+          "size": 13163,
+          "sha256": "734f72f239fe7b07b4c7203f294c1a7ce27095687278bab7e56d630d7c672963"
+        }
+      ],
+      "archive_hash_source": "computed digest matches GitHub release API sha256",
+      "acquisition": "official Windows x64 tool snapshot; unchanged upstream bytes"
     }
   ]
 }
