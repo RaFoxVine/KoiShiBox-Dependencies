@@ -68,10 +68,10 @@
     {
       "name": "Dear ImGui",
       "path": "imgui",
-      "version": "1.92.9b",
+      "version": "1.92.9b-docking",
       "source_url": "https://github.com/ocornut/imgui",
-      "upstream_revision": null,
-      "import_tree": "e5e0a65c14bfb90d41106f461ec14999c2270e33",
+      "upstream_revision": "b48d1afbe8ee8b238e2961dc363a949dd7304e23",
+      "import_tree": "877082d0cfd3de4b6e8893e723480900dc6e88bd",
       "license": "MIT",
       "license_file": "imgui/LICENSE.txt"
     },
