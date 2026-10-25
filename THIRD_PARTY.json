@@ -6,6 +6,45 @@
   },
   "components": [
     {
+      "name": "SPIRV-Reflect",
+      "path": "spirv-reflect",
+      "version": "563dc9a16d0e86145e12a66bb61f0695ca4a14b9",
+      "source_url": "https://github.com/KhronosGroup/SPIRV-Reflect",
+      "upstream_revision": "563dc9a16d0e86145e12a66bb61f0695ca4a14b9",
+      "import_tree": "ddf55f2816ca65768c3c767f70d84add3741d3be",
+      "license": "Apache-2.0 AND MIT",
+      "license_file": "licenses/spirv-reflect-LICENSE",
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "files": [
+        {
+          "path": "spirv-reflect/spirv_reflect.c",
+          "upstream_path": "spirv_reflect.c",
+          "sha256": "36b20aa01aa3a5cd5511565ca0f174f483d61a0f7931fc27d965d450b4f33614"
+        },
+        {
+          "path": "spirv-reflect/spirv_reflect.h",
+          "upstream_path": "spirv_reflect.h",
+          "sha256": "38b7fb3a91d4f8725636d01dc6e0eec4e58b5a6d12d7dbaf5ad92f8cf5f2f25b"
+        },
+        {
+          "path": "spirv-reflect/include/spirv/unified1/spirv.h",
+          "upstream_path": "include/spirv/unified1/spirv.h",
+          "sha256": "4b8d9ce80915feecf75a7d0a3a9527693a091f340ea5b7f70c89353254b7c2ca",
+          "license": "MIT"
+        }
+      ],
+      "additional_licenses": [
+        {
+          "component": "Bundled Khronos SPIR-V headers",
+          "source_url": "https://github.com/KhronosGroup/SPIRV-Headers",
+          "upstream_revision": "e87f5a873192cdfddc94aea0a4dbd63059b0773c",
+          "upstream_path": "LICENSE",
+          "license_file": "licenses/spirv-headers-LICENSE",
+          "sha256": "ea43b1de38a6f90c488800d66dec1ed671e68cda530266bc96951fb5b6307613"
+        }
+      ]
+    },
+    {
       "name": "Premake",
       "path": "premake",
       "version": "5.0.0-beta1",
