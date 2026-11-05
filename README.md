@@ -10,3 +10,5 @@
 - 本仓库没有 nested gitlink。Donut 仅供只读研究，不参加构建或 READY；可选大媒体由 `optional-inputs.json` 描述。
 
 版本、原包 URL/hash、选取文件的原始 hash、许可证与 import tree 由 `THIRD_PARTY.json` 保存。官方 SDK 文件保持原字节，不做行为补丁。只有有证据的源码快照才声明 upstream revision。
+
+测试用 TypeScript、Node 类型声明和 undici-types 的原始 npm 发布包内容位于 `tools/typescript/node_modules/`。引擎测试入口直接使用这些包，Node.js 由主机提供。版本、来源、原包完整性和许可证见 `THIRD_PARTY.json`。

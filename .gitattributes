@@ -2,3 +2,5 @@
 * text=auto
 glfw/** -text whitespace=cr-at-eol
 tools/DXC/** -text whitespace=cr-at-eol
+tools/typescript/** -text whitespace=cr-at-eol
+licenses/undici-types-LICENSE -text whitespace=cr-at-eol

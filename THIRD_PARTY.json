@@ -284,6 +284,37 @@
       ],
       "archive_hash_source": "computed digest matches GitHub release API sha256",
       "acquisition": "official Windows x64 tool snapshot; unchanged upstream bytes"
+    },
+    {
+      "name": "typescript",
+      "path": "tools/typescript/node_modules/typescript",
+      "version": "5.5.4",
+      "source_url": "https://registry.npmmirror.com/typescript/-/typescript-5.5.4.tgz",
+      "upstream_tarball_integrity": "sha512-Mtq29sKDAEYP7aljRgtPOpTvOfbwRWlS6dPRzwjdE+C0R4brX/GUyhHSecbHMFLNBLcJIPt9nl9yG5TZ1weH+Q==",
+      "license": "Apache-2.0",
+      "license_file": "tools/typescript/node_modules/typescript/LICENSE.txt",
+      "license_sha256": "a7d00bfd54525bc694b6e32f64c7ebcf5e6b7ae3657be5cc12767bce74654a47"
+    },
+    {
+      "name": "@types/node",
+      "path": "tools/typescript/node_modules/@types/node",
+      "version": "20.9.0",
+      "source_url": "https://registry.npmmirror.com/@types/node/-/node-20.9.0.tgz",
+      "upstream_tarball_integrity": "sha512-nekiGu2NDb1BcVofVcEKMIwzlx4NjHlcjhoxxKBNLtz15Y1z7MYf549DFvkHSId02Ax6kGwWntIBPC3l/JZcmw==",
+      "license": "MIT",
+      "license_file": "tools/typescript/node_modules/@types/node/LICENSE",
+      "license_sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+    },
+    {
+      "name": "undici-types",
+      "path": "tools/typescript/node_modules/undici-types",
+      "version": "5.26.5",
+      "source_url": "https://registry.npmmirror.com/undici-types/-/undici-types-5.26.5.tgz",
+      "upstream_tarball_integrity": "sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==",
+      "license": "MIT",
+      "license_file": "licenses/undici-types-LICENSE",
+      "license_sha256": "a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27",
+      "license_source_url": "https://raw.githubusercontent.com/nodejs/undici/v5.26.5/LICENSE"
     }
   ]
 }
