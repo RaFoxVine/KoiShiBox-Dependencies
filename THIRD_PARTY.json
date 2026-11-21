@@ -159,6 +159,24 @@
       "license_file": "yaml-cpp/LICENSE"
     },
     {
+      "name": "doctest",
+      "path": "doctest",
+      "version": "2.4.12",
+      "source_url": "https://github.com/doctest/doctest",
+      "upstream_revision": "1da23a3e8119ec5cce4f9388e91b065e20bf06f5",
+      "import_tree": "6afa61ac4550ba9bf635f72cd9e0650a4aa06671",
+      "license": "MIT",
+      "license_file": "licenses/doctest-LICENSE.txt",
+      "license_sha256": "0fe0b331fa1513dcce8604ff1fa925f32d1cea17d8aeb1c2471fad40d291adc5",
+      "files": [
+        {
+          "path": "doctest/doctest/doctest.h",
+          "upstream_path": "doctest/doctest.h",
+          "sha256": "94029a7d32da24a56249658147dbd2b33ff0b9ed665295cbbaf19aafff5b0ced"
+        }
+      ]
+    },
+    {
       "name": "ShaderMake",
       "path": "tools/ShaderMake",
       "version": "Donut matching snapshot",

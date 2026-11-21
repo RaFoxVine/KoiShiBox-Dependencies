@@ -11,5 +11,6 @@ binary-only, or machine-acquired components:
 - `entt-LICENSE` — EnTT v4.0.0.
 - `glm-copying.txt` — GLM 1.0.3.
 - `stb-LICENSE` — stb dual-license text.
+- `doctest-LICENSE.txt` — doctest v2.4.12 的 MIT 许可证原文，来自上游 `LICENSE.txt`。
 - `../glfw/LICENSE.md` — GLFW 3.4 官方 SDK 的 Zlib 许可证原文。
 - `../tools/DXC/LICENSE-MS.txt` 和 `../tools/DXC/LICENSE-LLVM.txt` — 官方 DXC 发布包的两份许可证原文；来源与文件 hash 见 THIRD_PARTY.json。

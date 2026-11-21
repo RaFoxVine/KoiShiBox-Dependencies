@@ -7,6 +7,7 @@
 - 桌面仍需机器提供 Vulkan SDK；Headless 不使用 Vulkan/GLFW。机器 SDK、下载缓存和引擎生成物不存入本仓库。
 - ShaderMake 源码位于 `tools/ShaderMake/`，其可执行产物和 Shader 输出由引擎构建，保存在引擎 ignored 输出目录。
 - SPIRV-Reflect 原版 CPU 反射源码位于 `spirv-reflect/`；自带 SPIR-V 头，无系统头依赖。Apache-2.0 与头文件 MIT 许可分别保存在 `licenses/`，固定来源与原字节 hash 见 `THIRD_PARTY.json`。
+- doctest v2.4.12 的原样单头文件位于 `doctest/doctest/doctest.h`，供引擎 C++ 测试程序使用，引用写作 `#include <doctest/doctest.h>`。
 - 本仓库没有 nested gitlink。Donut 仅供只读研究，不参加构建或 READY；可选大媒体由 `optional-inputs.json` 描述。
 
 版本、原包 URL/hash、选取文件的原始 hash、许可证与 import tree 由 `THIRD_PARTY.json` 保存。官方 SDK 文件保持原字节，不做行为补丁。只有有证据的源码快照才声明 upstream revision。
